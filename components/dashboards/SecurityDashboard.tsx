@@ -154,25 +154,49 @@ const SecurityDashboard: React.FC = () => {
                 isAppointment: false,
             };
             await addJob(newJob);
-            alert(`Đã nhập xe ${plate} vào xưởng.`);
+            setStatusMessage({ type: 'success', text: `Đã nhập xe ${plate} vào xưởng.` });
+            setTimeout(() => setStatusMessage(null), 3000);
         } else {
             // EXIT Tab
-            if (!activeJob) {
+            const activeJobs = state.jobs.filter(j => normalizePlate(j.licensePlate) === normalizePlate(plate) && j.status !== JobStatus.Exited);
+            
+            if (activeJobs.length === 0) {
                 throw new Error(`Không tìm thấy xe ${plate} đang ở trong xưởng.`);
             }
+
+            // Kiểm tra nếu xe đang trong quá trình Rửa xe
+            const isWashing = activeJobs.some(j => j.status === JobStatus.Washing);
+            if (isWashing) {
+                throw new Error(`Xe ${plate} đang trong danh sách chờ rửa hoặc đang rửa. Vui lòng chờ hoàn tất rửa xe trước khi cho ra cổng.`);
+            }
+
+            // Kiểm tra trạng thái sẵn sàng ra cổng
+            const readyStatuses = [JobStatus.Ready, JobStatus.RepairComplete, JobStatus.FreeInspection, JobStatus.Quotation];
+            const isReady = activeJobs.some(j => readyStatuses.includes(j.status));
             
-            await updateJob({
-                ...activeJob,
-                status: JobStatus.Exited,
-                actualExitTime: now
-            });
-            alert(`Xác nhận xe ${plate} ra cổng thành công.`);
+            if (!isReady) {
+                throw new Error(`Xe ${plate} chưa hoàn thành sửa chữa hoặc chưa được cấp phép ra cổng.`);
+            }
+            
+            // Cập nhật tất cả các lệnh liên quan của xe này thành "Đã ra cổng"
+            for (const activeJob of activeJobs) {
+                await updateJob({
+                    ...activeJob,
+                    status: JobStatus.Exited,
+                    actualExitTime: now
+                });
+            }
+            
+            setStatusMessage({ type: 'success', text: `Xác nhận xe ${plate} ra cổng thành công.` });
+            setTimeout(() => setStatusMessage(null), 3000);
         }
 
-        setIsScannerOpen(false);
-        setIsManualInputOpen(false);
-        setScannedPlate('');
-        setStatusMessage(null);
+        setTimeout(() => {
+            setIsScannerOpen(false);
+            setIsManualInputOpen(false);
+            setScannedPlate('');
+        }, 1500);
+        
         await refreshData();
       } catch (e) {
           setStatusMessage({ type: 'error', text: (e as Error).message });
@@ -215,11 +239,25 @@ const SecurityDashboard: React.FC = () => {
                                 })
                                 .slice(0, 20);
 
-  const readyToExitJobs = state.jobs.filter(j => 
-    j.status === JobStatus.Ready || 
-    j.status === JobStatus.RepairComplete || 
-    j.status === JobStatus.FreeInspection || 
-    j.status === JobStatus.Quotation
+  const readyToExitJobs = state.jobs.filter(j => {
+    const isReadyStatus = [
+      JobStatus.Ready, 
+      JobStatus.RepairComplete, 
+      JobStatus.FreeInspection, 
+      JobStatus.Quotation
+    ].includes(j.status);
+    
+    if (!isReadyStatus) return false;
+
+    // Kiểm tra xem biển số này có đang trong danh sách Rửa xe (đang rửa hoặc chờ rửa) không
+    const hasWashingJob = state.jobs.some(other => 
+      normalizePlate(other.licensePlate) === normalizePlate(j.licensePlate) && 
+      other.status === JobStatus.Washing
+    );
+
+    return !hasWashingJob;
+  }).filter((job, index, self) => 
+      index === self.findIndex((t) => normalizePlate(t.licensePlate) === normalizePlate(job.licensePlate))
   );
 
   const getStatusBadge = (status: JobStatus) => {
@@ -324,15 +362,20 @@ const SecurityDashboard: React.FC = () => {
                     {scanStep === 'live' && <div className="absolute w-64 h-40 border-2 border-white/50 rounded-lg pointer-events-none shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />}
                 </div>
                 <div className="bg-white p-6 rounded-t-3xl">
-                    {scanStep === 'live' ? <button onClick={handleCaptureAndScan} className="w-16 h-16 bg-blue-600 rounded-full mx-auto border-4 border-white shadow-lg" /> : (
-                        <div className="space-y-4">
-                            <input value={scannedPlate} onChange={e => setScannedPlate(formatLicensePlate(e.target.value))} className="w-full text-center text-3xl font-extrabold font-mono border-b-2 uppercase py-2 outline-none" />
-                            <div className="flex gap-2">
-                                <button onClick={() => setScanStep('live')} className="flex-1 py-3 text-gray-500 font-bold bg-gray-50 rounded-xl">Quét lại</button>
-                                <button onClick={handleAction} disabled={isSubmitting} className="flex-2 py-3 bg-brand-blue text-white font-bold rounded-xl">{isSubmitting ? 'Đang xử lý...' : (activeTab === 'entry' ? 'CÀI VÀO' : 'XÁC NHẬN RA')}</button>
+                        {scanStep === 'live' ? <button onClick={handleCaptureAndScan} className="w-16 h-16 bg-blue-600 rounded-full mx-auto border-4 border-white shadow-lg" /> : (
+                            <div className="space-y-4">
+                                <input value={scannedPlate} onChange={e => setScannedPlate(formatLicensePlate(e.target.value))} className="w-full text-center text-3xl font-extrabold font-mono border-b-2 uppercase py-2 outline-none" />
+                                {statusMessage && (
+                                    <p className={`text-center text-sm font-bold ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+                                        {statusMessage.text}
+                                    </p>
+                                )}
+                                <div className="flex gap-2">
+                                    <button onClick={() => setScanStep('live')} className="flex-1 py-3 text-gray-500 font-bold bg-gray-50 rounded-xl">Quét lại</button>
+                                    <button onClick={handleAction} disabled={isSubmitting} className="flex-2 py-3 bg-brand-blue text-white font-bold rounded-xl">{isSubmitting ? 'Đang xử lý...' : (activeTab === 'entry' ? 'CÀI VÀO' : 'XÁC NHẬN RA')}</button>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                 </div>
             </div>
         )}
@@ -356,7 +399,11 @@ const SecurityDashboard: React.FC = () => {
                             </div>
                         )}
                         <input value={scannedPlate} onChange={e => setScannedPlate(formatLicensePlate(e.target.value))} className="w-full text-center text-4xl font-extrabold font-mono bg-gray-50 rounded-xl py-5 border-2 border-gray-100 uppercase outline-none" placeholder="59A-..." />
-                        {statusMessage && <p className="mt-3 text-red-500 text-center text-sm font-bold">{statusMessage.text}</p>}
+                        {statusMessage && (
+                            <p className={`mt-3 text-center text-sm font-bold ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+                                {statusMessage.text}
+                            </p>
+                        )}
                         <button onClick={handleAction} disabled={isSubmitting} className="w-full mt-6 bg-brand-blue text-white font-bold py-4 rounded-xl shadow-lg">{isSubmitting ? 'Đang xử lý...' : 'XÁC NHẬN'}</button>
                     </div>
                 </div>

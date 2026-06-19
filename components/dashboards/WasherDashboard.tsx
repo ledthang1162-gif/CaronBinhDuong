@@ -3,12 +3,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../hooks/useApp';
 import { useAuth } from '../../hooks/useAuth';
 import { Job, JobStatus } from '../../types';
+import ConfirmationModal from '../modals/ConfirmationModal';
 
 const WasherDashboard: React.FC = () => {
     const { state, updateJob } = useApp();
     const { user } = useAuth();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+    const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; message: string; onConfirm: () => void } | null>(null);
+    const [notification, setNotification] = useState<string | null>(null);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -72,6 +75,23 @@ const WasherDashboard: React.FC = () => {
         });
     };
 
+    const handleCancelWash = (job: Job) => {
+        setModalConfig({
+            isOpen: true,
+            message: `Bạn có muốn Hủy rửa xe này hay không?`,
+            onConfirm: async () => {
+                await updateJob({
+                    ...job,
+                    status: JobStatus.Ready,
+                    bayId: undefined // Rời khỏi khoang rửa
+                });
+                setModalConfig(null);
+                setNotification(`Đã hoàn tất hủy rửa xe ${job.licensePlate}.`);
+                setTimeout(() => setNotification(null), 3000);
+            }
+        });
+    };
+
     const formatDuration = (start: Date) => {
         const diff = Math.floor((currentTime.getTime() - start.getTime()) / 1000);
         const mins = Math.floor(diff / 60);
@@ -111,12 +131,21 @@ const WasherDashboard: React.FC = () => {
 
                 <div className="flex space-x-3">
                     {!isStarted ? (
-                        <button 
-                            onClick={() => handleStart(job)}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition active:scale-95"
-                        >
-                            Bắt đầu rửa
-                        </button>
+                        <>
+                            <button 
+                                onClick={() => handleStart(job)}
+                                className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition active:scale-95"
+                            >
+                                Bắt đầu rửa
+                            </button>
+                            <button 
+                                onClick={() => handleCancelWash(job)}
+                                className="flex-[1] bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 rounded-lg transition active:scale-95 text-sm"
+                                title="Khách hủy rửa xe"
+                            >
+                                Hủy rửa
+                            </button>
+                        </>
                     ) : (
                         <button 
                             onClick={() => handleFinish(job)}
@@ -187,6 +216,21 @@ const WasherDashboard: React.FC = () => {
                     )
                 )}
             </div>
+            {/* Notification Toast */}
+            {notification && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl animate-bounce">
+                    {notification}
+                </div>
+            )}
+
+            {/* Confirmation Modal */}
+            {modalConfig?.isOpen && (
+                <ConfirmationModal 
+                    message={modalConfig.message}
+                    onConfirm={modalConfig.onConfirm}
+                    onCancel={() => setModalConfig(null)}
+                />
+            )}
         </div>
     );
 };
