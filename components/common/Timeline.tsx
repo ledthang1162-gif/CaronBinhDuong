@@ -626,7 +626,12 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
                   className={`h-1/2 border-b relative ${canSchedule ? 'cursor-pointer hover:bg-gray-50' : ''}`}
                   onClick={(e) => handleDkLaneClick(bay.id, e)}
                 >
-                  {jobs.filter(job => job.bayId === bay.id && !job.actualStartTime).map(job => (
+                  {jobs.filter(job => 
+                    job.bayId === bay.id && 
+                    !job.actualStartTime && 
+                    job.status !== JobStatus.Ready && 
+                    job.status !== JobStatus.Exited
+                  ).map(job => (
                     <JobBlock 
                         key={job.id} 
                         job={job} 

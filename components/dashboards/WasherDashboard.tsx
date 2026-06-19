@@ -83,7 +83,7 @@ const WasherDashboard: React.FC = () => {
                 await updateJob({
                     ...job,
                     status: JobStatus.Ready,
-                    bayId: undefined // Rời khỏi khoang rửa
+                    bayId: null as any // Rời khỏi khoang rửa (Cần null để xóa trong DB)
                 });
                 setModalConfig(null);
                 setNotification(`Đã hoàn tất hủy rửa xe ${job.licensePlate}.`);
