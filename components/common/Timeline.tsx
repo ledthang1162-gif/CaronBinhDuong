@@ -85,6 +85,7 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
   const { state, updateJob } = useApp(); // Sử dụng `state` để kiểm tra xung đột toàn diện
   const { user } = useAuth();
   const timelineGridRef = useRef<HTMLDivElement>(null); // Ref for the grid area
+  const scrollContainerRef = useRef<HTMLDivElement>(null); // Ref for the scrollable container
 
   const [draggingState, setDraggingState] = useState<DraggingState | null>(null);
   const [resizingState, setResizingState] = useState<ResizingState | null>(null);
@@ -504,6 +505,41 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
     onLaneClick(bayId, clickedTime);
   };
 
+  // Auto-scroll to evening hours if current time is past 5 PM (17:00)
+  useEffect(() => {
+    const handleAutoScroll = () => {
+      const now = new Date();
+      const toYYYYMMDD = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      if (toYYYYMMDD(now) === displayDate && scrollContainerRef.current) {
+        const currentHour = now.getHours();
+        if (currentHour >= 17) {
+          // Use a small timeout to ensure the grid has rendered its width
+          setTimeout(() => {
+            if (scrollContainerRef.current) {
+              const container = scrollContainerRef.current;
+              container.scrollTo({
+                left: container.scrollWidth - container.clientWidth,
+                behavior: 'smooth'
+              });
+            }
+          }, 100);
+        }
+      }
+    };
+
+    handleAutoScroll();
+    
+    // Also scroll when window gets focus (user returns to the tab)
+    window.addEventListener('focus', handleAutoScroll);
+    return () => window.removeEventListener('focus', handleAutoScroll);
+  }, [displayDate]);
+
   return (
     <div className={`bg-white rounded-lg shadow-xl p-4 ${isFullScreen ? 'h-full flex flex-col' : 'relative'}`}>
       <div className={`flex ${isFullScreen ? 'flex-grow overflow-hidden' : ''}`}>
@@ -567,7 +603,10 @@ const Timeline: React.FC<TimelineProps> = ({ bays, jobs, onJobClick, displayDate
             </div>
           )}
 
-          <div className="flex-grow flex flex-col overflow-x-auto">
+          <div 
+            ref={scrollContainerRef}
+            className="flex-grow flex flex-col overflow-x-auto"
+          >
             <div 
               className="grid h-10 border-b sticky top-0 bg-white z-20 flex-shrink-0"
               style={{ 

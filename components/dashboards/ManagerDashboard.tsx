@@ -19,6 +19,8 @@ import Settings from '../management/Settings';
 import VehiclesInWorkshop from '../common/VehiclesInWorkshop';
 import PausedJobsList from '../common/PausedJobsList';
 
+import ManagerOverview from './ManagerOverview';
+
 const TabButton: React.FC<{tabName: string; label: string; activeTab: string; setActiveTab: (name: string) => void}> = ({ tabName, label, activeTab, setActiveTab }) => (
     <button
         onClick={() => setActiveTab(tabName)}
@@ -36,7 +38,7 @@ const TabButton: React.FC<{tabName: string; label: string; activeTab: string; se
 const ManagerDashboard: React.FC = () => {
     const { state, dispatch, deleteJob } = useApp();
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState('general_repair');
+    const [activeTab, setActiveTab] = useState('overview');
 
     const [isJobFormOpen, setIsJobFormOpen] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -187,6 +189,8 @@ const ManagerDashboard: React.FC = () => {
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'overview':
+                return <ManagerOverview />;
             case 'general_repair':
                 return renderGeneralRepairView();
             case 'vehicle_arrival':
@@ -240,6 +244,7 @@ const ManagerDashboard: React.FC = () => {
              <h1 className="text-3xl font-bold text-gray-800">Chào mừng Manager!</h1>
             <div>
                 <div className="flex border-b border-gray-300 flex-wrap">
+                    <TabButton tabName="overview" label="Tổng quan" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton tabName="general_repair" label="Sửa chữa chung" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton tabName="vehicle_arrival" label="Xe tới xưởng" activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton tabName="body_shop" label="Đồng sơn" activeTab={activeTab} setActiveTab={setActiveTab} />

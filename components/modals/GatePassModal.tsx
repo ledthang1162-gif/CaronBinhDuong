@@ -175,9 +175,9 @@ const GatePassModal: React.FC<GatePassModalProps> = ({ onClose }) => {
                     {/* Header */}
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-xs font-bold leading-relaxed">
-                            <h3 className="uppercase text-sm mb-1">CHI NHÁNH CÔNG TY TNHH VIỆT NAM SUZUKI</h3>
-                            <p>Số 2 Phổ Quang, Phường Tân Sơn Hòa, TP.HCM</p>
-                            <p>ĐT: 08.62929107 - DĐ: 0933.149922</p>
+                            <h3 className="uppercase text-sm mb-1">VINFAST CARON BÌNH DƯƠNG</h3>
+                            <p>40/4 ĐT 743, Khu phố Bình Phú, Phường Thuận Giao, TP HCM</p>
+                            <p>ĐT: </p>
                         </div>
                         <img src={state.logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
                     </div>
