@@ -100,11 +100,13 @@ const SecurityDashboard: React.FC = () => {
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
         
         if (!apiKey || apiKey === 'your_actual_gemini_api_key_here') {
-          throw new Error('API Key chưa được cấu hình trên Netlify (VITE_GEMINI_API_KEY)');
+          console.error("Lỗi: Biến VITE_GEMINI_API_KEY đang bị trống trong môi trường chạy.");
+          throw new Error('API Key chưa được cấu hình. Vui lòng kiểm tra lại Environment Variables trên Netlify.');
         }
 
         const genAI = new GoogleGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Cập nhật model gemini-2.5-flash
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const base64Data = imageUrl.split(',')[1];
         const result = await model.generateContent({
             contents: [{
@@ -118,10 +120,8 @@ const SecurityDashboard: React.FC = () => {
         setScannedPlate(formatted);
         setScanStep('result');
       } catch (error: any) {
-          console.error("Gemini Error:", error);
-          const errorMsg = error.message?.includes('API Key') 
-            ? 'Lỗi: Chưa thiết lập API Key trong Environment Variables.' 
-            : 'Nhận diện lỗi. Vui lòng nhập tay.';
+          console.error("Gemini Error Detail:", error);
+          const errorMsg = error.message || 'Nhận diện lỗi. Vui lòng nhập tay.';
           setStatusMessage({ type: 'error', text: errorMsg });
           setScanStep('result');
       }
