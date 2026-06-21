@@ -170,20 +170,20 @@ const VehicleArrival: React.FC = () => {
 
       try {
         // Cập nhật API Key từ biến môi trường
-        const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
+        const genAI = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY || '');
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const base64Data = imageUrl.split(',')[1];
         
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: {
+        const result = await model.generateContent({
+            contents: [{
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
                     { text: "Trích xuất biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ văn bản nào khác." }
                 ]
-            }
+            }]
         });
 
-        const text = response.text.trim();
+        const text = result.response.text().trim();
         const formatted = formatLicensePlate(text);
         setScannedPlate(formatted);
         setScanStep('result');
