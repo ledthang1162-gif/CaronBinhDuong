@@ -97,7 +97,7 @@ const SecurityDashboard: React.FC = () => {
       setScanStep('processing');
 
       try {
-        const ai = new GoogleGenAI({ apiKey: "AIzaSyBwRV4cPIJb-4l0JzsNUUI6VySAeP5CIFo" });
+        const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
         const base64Data = imageUrl.split(',')[1];
         const response = await ai.models.generateContent({
             model: 'gemini-1.5-flash',

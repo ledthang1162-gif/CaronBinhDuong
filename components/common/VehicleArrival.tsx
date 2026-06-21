@@ -169,8 +169,8 @@ const VehicleArrival: React.FC = () => {
       setScanStep('processing');
 
       try {
-        // Cập nhật API Key vào đây, đảm bảo có dấu ngoặc kép ""
-        const ai = new GoogleGenAI({ apiKey: "AIzaSyBwRV4cPIJb-4l0JzsNUUI6VySAeP5CIFo" });
+        // Cập nhật API Key từ biến môi trường
+        const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
         const base64Data = imageUrl.split(',')[1];
         
         const response = await ai.models.generateContent({
