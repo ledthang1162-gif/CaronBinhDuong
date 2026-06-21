@@ -169,8 +169,13 @@ const VehicleArrival: React.FC = () => {
       setScanStep('processing');
 
       try {
-        // Cập nhật API Key từ biến môi trường
-        const genAI = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY || '');
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        
+        if (!apiKey || apiKey === 'your_actual_gemini_api_key_here') {
+          throw new Error('API Key chưa được cấu hình trên Netlify (VITE_GEMINI_API_KEY)');
+        }
+
+        const genAI = new GoogleGenAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const base64Data = imageUrl.split(',')[1];
         
@@ -188,9 +193,12 @@ const VehicleArrival: React.FC = () => {
         setScannedPlate(formatted);
         setScanStep('result');
 
-      } catch (error) {
-          console.error(error);
-          setStatusMessage({ type: 'error', text: 'Không nhận diện được. Vui lòng thử lại hoặc nhập tay.' });
+      } catch (error: any) {
+          console.error("Gemini Error:", error);
+          const errorMsg = error.message?.includes('API Key') 
+            ? 'Lỗi: Chưa thiết lập API Key trong Environment Variables.' 
+            : 'Không nhận diện được biển số. Vui lòng thử lại hoặc nhập tay.';
+          setStatusMessage({ type: 'error', text: errorMsg });
           setScanStep('result');
       }
   };
