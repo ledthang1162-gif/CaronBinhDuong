@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { useApp } from '../../hooks/useApp';
 import { useAuth } from '../../hooks/useAuth';
 import { Job, JobStatus, JobType, Role } from '../../types';
@@ -97,30 +96,26 @@ const SecurityDashboard: React.FC = () => {
       setScanStep('processing');
 
       try {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        setScanStep('processing');
+        const base64Data = imageUrl.split(',')[1];
         
-        if (!apiKey || apiKey === 'your_actual_gemini_api_key_here') {
-          console.error("Lỗi: Biến VITE_GEMINI_API_KEY đang bị trống trong môi trường chạy.");
-          throw new Error('API Key chưa được cấu hình. Vui lòng kiểm tra lại Environment Variables trên Netlify.');
+        const response = await fetch('/api/scan-plate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64Data })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Lỗi khi quét biển số');
         }
 
-        const genAI = new GoogleGenAI(apiKey);
-        // Cập nhật model gemini-2.5-flash
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const base64Data = imageUrl.split(',')[1];
-        const result = await model.generateContent({
-            contents: [{
-                parts: [
-                    { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-                    { text: "Trích xuất biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm văn bản khác." }
-                ]
-            }]
-        });
-        const formatted = formatLicensePlate(result.response.text().trim());
+        const data = await response.json();
+        const formatted = formatLicensePlate(data.plate);
         setScannedPlate(formatted);
         setScanStep('result');
       } catch (error: any) {
-          console.error("Gemini Error Detail:", error);
+          console.error("Scan Error Detail:", error);
           const errorMsg = error.message || 'Nhận diện lỗi. Vui lòng nhập tay.';
           setStatusMessage({ type: 'error', text: errorMsg });
           setScanStep('result');

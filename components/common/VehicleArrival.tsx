@@ -1,6 +1,5 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { useApp } from '../../hooks/useApp';
 import { Job, JobStatus, JobType, Vehicle } from '../../types';
 
@@ -169,34 +168,28 @@ const VehicleArrival: React.FC = () => {
       setScanStep('processing');
 
       try {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        
-        if (!apiKey || apiKey === 'your_actual_gemini_api_key_here') {
-          console.error("Lỗi: Biến VITE_GEMINI_API_KEY đang bị trống trong môi trường chạy.");
-          throw new Error('API Key chưa được cấu hình. Vui lòng kiểm tra lại Environment Variables trên Netlify.');
-        }
-
-        const genAI = new GoogleGenAI(apiKey);
-        // Cập nhật lên model gemini-2.5-flash theo phản hồi của bạn
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        setScanStep('processing');
         const base64Data = imageUrl.split(',')[1];
         
-        const result = await model.generateContent({
-            contents: [{
-                parts: [
-                    { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-                    { text: "Trích xuất biển số xe từ hình ảnh này. Chỉ trả về chuỗi biển số (ví dụ: 59A-123.45). Không thêm bất kỳ văn bản nào khác." }
-                ]
-            }]
+        const response = await fetch('/api/scan-plate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64Data })
         });
 
-        const text = result.response.text().trim();
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Lỗi khi quét biển số');
+        }
+
+        const data = await response.json();
+        const text = data.plate;
         const formatted = formatLicensePlate(text);
         setScannedPlate(formatted);
         setScanStep('result');
 
       } catch (error: any) {
-          console.error("Gemini Error Detail:", error);
+          console.error("Scan Error Detail:", error);
           const errorMsg = error.message || 'Không nhận diện được biển số. Vui lòng thử lại.';
           setStatusMessage({ type: 'error', text: errorMsg });
           setScanStep('result');
